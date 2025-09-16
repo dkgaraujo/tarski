@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.24">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Codex">
+
+<title>Tarski’s Fixed Point Theorem in Lean</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="tarski_files/libs/clipboard/clipboard.min.js"></script>
+<script src="tarski_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="tarski_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="tarski_files/libs/quarto-html/popper.min.js"></script>
+<script src="tarski_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="tarski_files/libs/quarto-html/anchor.min.js"></script>
+<link href="tarski_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="tarski_files/libs/quarto-html/quarto-syntax-highlighting-a37c72dd2dbac68997fcdc15a3622e78.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="tarski_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="tarski_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="tarski_files/libs/bootstrap/bootstrap-81267100e462c21b3d6c0d5bf76a3417.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#background-and-statement" id="toc-background-and-statement" class="nav-link active" data-scroll-target="#background-and-statement">Background and Statement</a></li>
+  <li><a href="#intuition-and-relationships-to-other-fixed-point-theorems" id="toc-intuition-and-relationships-to-other-fixed-point-theorems" class="nav-link" data-scroll-target="#intuition-and-relationships-to-other-fixed-point-theorems">Intuition and Relationships to Other Fixed Point Theorems</a></li>
+  <li><a href="#constructing-least-and-greatest-fixed-points" id="toc-constructing-least-and-greatest-fixed-points" class="nav-link" data-scroll-target="#constructing-least-and-greatest-fixed-points">Constructing Least and Greatest Fixed Points</a>
+  <ul class="collapse">
+  <li><a href="#bounding-the-candidates" id="toc-bounding-the-candidates" class="nav-link" data-scroll-target="#bounding-the-candidates">Bounding the Candidates</a></li>
+  <li><a href="#monotonicity-forces-invariance" id="toc-monotonicity-forces-invariance" class="nav-link" data-scroll-target="#monotonicity-forces-invariance">Monotonicity Forces Invariance</a></li>
+  <li><a href="#minimality-and-maximality-among-fixed-points" id="toc-minimality-and-maximality-among-fixed-points" class="nav-link" data-scroll-target="#minimality-and-maximality-among-fixed-points">Minimality and Maximality Among Fixed Points</a></li>
+  <li><a href="#the-final-theorem" id="toc-the-final-theorem" class="nav-link" data-scroll-target="#the-final-theorem">The Final Theorem</a></li>
+  </ul></li>
+  <li><a href="#reflections-on-formalizing-the-proof" id="toc-reflections-on-formalizing-the-proof" class="nav-link" data-scroll-target="#reflections-on-formalizing-the-proof">Reflections on Formalizing the Proof</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Tarski’s Fixed Point Theorem in Lean</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Codex </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<style>
+pre code.language-lean {
+  font-size: 0.9em;
+}
+</style>
+<section id="background-and-statement" class="level2">
+<h2 class="anchored" data-anchor-id="background-and-statement">Background and Statement</h2>
+<p>The <strong>Tarski fixed point theorem</strong> asserts that any monotone self-map on a complete lattice possesses both a least and a greatest fixed point <span class="citation" data-cites="tarski1955lattice">(<a href="#ref-tarski1955lattice" role="doc-biblioref">Tarski 1955</a>)</span>. Formally, let <span class="math inline">\((L, \le)\)</span> be a complete lattice and let <span class="math inline">\(f : L \to L\)</span> be monotone. Then there exist elements <span class="math inline">\(\mu, \nu \in L\)</span> such that [ f() = , f() = , ] where <span class="math inline">\(\mu\)</span> is minimal and <span class="math inline">\(\nu\)</span> is maximal among all fixed points of <span class="math inline">\(f\)</span>.</p>
+<p>This result underlies large swathes of order theory, lattice-theoretic semantics of programming languages, and fixed point logics. In Lean, we work in the <code>CompleteLattice</code> typeclass and prove the theorem inside the module <code>Tarski</code>.</p>
+</section>
+<section id="intuition-and-relationships-to-other-fixed-point-theorems" class="level2">
+<h2 class="anchored" data-anchor-id="intuition-and-relationships-to-other-fixed-point-theorems">Intuition and Relationships to Other Fixed Point Theorems</h2>
+<p>The guiding idea is that monotonicity preserves order, so it suffices to collect <em>pre-fixed points</em> (elements satisfying <span class="math inline">\(f(x) \le x\)</span>) and <em>post-fixed points</em> (those with <span class="math inline">\(x \le f(x)\)</span>). The infimum of the pre-fixed points gives the smallest element invariant under <span class="math inline">\(f\)</span>, while the supremum of the post-fixed points gives the largest. The completeness of the lattice guarantees these bounds exist.</p>
+<p>In contrast, the Banach fixed point theorem demands a metric contraction and yields a unique fixed point <span class="citation" data-cites="banach1922operations">(<a href="#ref-banach1922operations" role="doc-biblioref">Banach 1922</a>)</span>. Brouwer’s fixed point theorem applies to continuous self-maps on compact, convex subsets of Euclidean space, again giving existence but not multiplicity information <span class="citation" data-cites="brouwer1912abbildungssatz">(<a href="#ref-brouwer1912abbildungssatz" role="doc-biblioref">Brouwer 1912</a>)</span>. Tarski’s theorem is particularly powerful in discrete or order-theoretic contexts, such as reasoning about inductive and coinductive definitions, where metrics or convexity notions may be unavailable. However, when uniqueness or convergence guarantees are needed—for example in iterative numerical schemes—Banach’s theorem gives stronger information.</p>
+</section>
+<section id="constructing-least-and-greatest-fixed-points" class="level2">
+<h2 class="anchored" data-anchor-id="constructing-least-and-greatest-fixed-points">Constructing Least and Greatest Fixed Points</h2>
+<p>We begin by defining the least and greatest fixed points via infimum and supremum constructions in Lean. The following definitions mirror the classical order-theoretic ones.</p>
+<pre class="lean"><code>/-- The least fixed point of a self-map `f`. -/
+def lfp (f : α → α) : α := sInf {x : α | f x ≤ x}
+
+/-- The greatest fixed point of a self-map `f`. -/
+def gfp (f : α → α) : α := sSup {x : α | x ≤ f x}</code></pre>
+<p>The set <code>{x : f x ≤ x}</code> collects pre-fixed points, whose infimum is the least candidate; <code>{x : x ≤ f x}</code> handles post-fixed points.</p>
+<section id="bounding-the-candidates" class="level3">
+<h3 class="anchored" data-anchor-id="bounding-the-candidates">Bounding the Candidates</h3>
+<p>For <span class="math inline">\(x\)</span> with <span class="math inline">\(f(x) \le x\)</span>, we know <span class="math inline">\(\mathrm{lfp}(f) \le x\)</span> because <span class="math inline">\(\mathrm{lfp}(f)\)</span> is the infimum of all such points. Dually, a point <span class="math inline">\(x\)</span> with <span class="math inline">\(x \le f(x)\)</span> lies below <span class="math inline">\(\mathrm{gfp}(f)\)</span>.</p>
+<pre class="lean"><code>lemma lfp_le_of_mem {f : α → α} {x : α} (hx : f x ≤ x) : lfp f ≤ x := by
+  have hx' : x ∈ {x : α | f x ≤ x} := hx
+  simpa [lfp] using sInf_le hx'
+
+lemma le_of_mem_gfp {f : α → α} {x : α} (hx : x ≤ f x) : x ≤ gfp f := by
+  have hx' : x ∈ {x : α | x ≤ f x} := hx
+  simpa [gfp] using le_sSup hx'</code></pre>
+<p>These lemmas formalize the intuitive bounding relationships.</p>
+</section>
+<section id="monotonicity-forces-invariance" class="level3">
+<h3 class="anchored" data-anchor-id="monotonicity-forces-invariance">Monotonicity Forces Invariance</h3>
+<p>To prove that <span class="math inline">\(\mathrm{lfp}(f)\)</span> is actually fixed, we first show <span class="math inline">\(f(\mathrm{lfp}(f)) \le \mathrm{lfp}(f)\)</span> using monotonicity applied to every pre-fixed point.</p>
+<pre class="lean"><code>lemma lfp_le_flfp {f : α → α} (hf : Monotone f) : f (lfp f) ≤ lfp f := by
+  refine le_sInf ?_
+  intro x hx
+  have hx' : f x ≤ x := hx
+  have hμ_le : lfp f ≤ x := lfp_le_of_mem (f := f) hx
+  exact (hf hμ_le).trans hx'</code></pre>
+<p>Next, because <span class="math inline">\(f(\mathrm{lfp}(f))\)</span> is itself a pre-fixed point, it must lie above the infimum, giving the reverse inequality.</p>
+<pre class="lean"><code>lemma lfp_le_f {f : α → α} (hf : Monotone f) : lfp f ≤ f (lfp f) := by
+  have hx : f (lfp f) ≤ lfp f := lfp_le_flfp (f := f) hf
+  have hx_mem : f (lfp f) ∈ {x : α | f x ≤ x} := by
+    show f (f (lfp f)) ≤ f (lfp f)
+    exact hf hx
+  simpa [lfp] using sInf_le hx_mem</code></pre>
+<p>Combining both directions yields equality.</p>
+<pre class="lean"><code>lemma lfp_eq {f : α → α} (hf : Monotone f) : f (lfp f) = lfp f :=
+  le_antisymm (lfp_le_flfp (f := f) hf) (lfp_le_f (f := f) hf)</code></pre>
+<p>A symmetric pair of arguments establishes that <span class="math inline">\(\mathrm{gfp}(f)\)</span> is fixed.</p>
+<pre class="lean"><code>lemma gfp_le {f : α → α} (hf : Monotone f) : gfp f ≤ f (gfp f) := by
+  refine sSup_le ?_
+  intro x hx
+  have hx' : x ≤ f x := hx
+  have hx_le : x ≤ gfp f := le_of_mem_gfp (f := f) hx
+  have : f x ≤ f (gfp f) := hf hx_le
+  exact hx'.trans this
+
+lemma fgfp_le {f : α → α} (hf : Monotone f) : f (gfp f) ≤ gfp f := by
+  have hx : f (gfp f) ∈ {x : α | x ≤ f x} := by
+    show f (gfp f) ≤ f (f (gfp f))
+    exact hf (gfp_le (f := f) hf)
+  simpa [gfp] using le_sSup hx
+
+lemma gfp_eq {f : α → α} (hf : Monotone f) : f (gfp f) = gfp f :=
+  le_antisymm (fgfp_le (f := f) hf) (gfp_le (f := f) hf)</code></pre>
+</section>
+<section id="minimality-and-maximality-among-fixed-points" class="level3">
+<h3 class="anchored" data-anchor-id="minimality-and-maximality-among-fixed-points">Minimality and Maximality Among Fixed Points</h3>
+<p>With fixed points in hand, we verify their extremal properties. Any fixed point automatically belongs to the relevant set, so the earlier bounds apply.</p>
+<pre class="lean"><code>lemma lfp_isLeast {f : α → α} (hf : Monotone f) :
+    IsLeast {x : α | f x = x} (lfp f) := by
+  refine ⟨?_, ?_⟩
+  · exact lfp_eq (f := f) hf
+  · intro x hx
+    have hx' := hx
+    simp [Set.mem_setOf_eq] at hx'
+    have hx_mem : f x ≤ x := by
+      calc
+        f x = x := hx'
+        _ ≤ x := le_rfl
+    exact lfp_le_of_mem (f := f) hx_mem
+
+lemma gfp_isGreatest {f : α → α} (hf : Monotone f) :
+    IsGreatest {x : α | f x = x} (gfp f) := by
+  refine ⟨?_, ?_⟩
+  · exact gfp_eq (f := f) hf
+  · intro x hx
+    have hx' := hx
+    simp [Set.mem_setOf_eq] at hx'
+    have hx_mem : x ≤ f x := by
+      calc
+        x = f x := hx'.symm
+        _ ≤ f x := le_rfl
+    exact le_of_mem_gfp (f := f) hx_mem</code></pre>
+</section>
+<section id="the-final-theorem" class="level3">
+<h3 class="anchored" data-anchor-id="the-final-theorem">The Final Theorem</h3>
+<p>Collecting both extremal statements yields Lean’s statement of Tarski’s theorem.</p>
+<pre class="lean"><code>lemma tarski {f : α → α} (hf : Monotone f) :
+    ∃ μ ν, IsLeast {x : α | f x = x} μ ∧ IsGreatest {x : α | f x = x} ν := by
+  refine ⟨lfp f, gfp f, lfp_isLeast (f := f) hf, gfp_isGreatest (f := f) hf⟩</code></pre>
+</section>
+</section>
+<section id="reflections-on-formalizing-the-proof" class="level2">
+<h2 class="anchored" data-anchor-id="reflections-on-formalizing-the-proof">Reflections on Formalizing the Proof</h2>
+<p>Lean’s typeclass and order hierarchy make it straightforward to translate the textbook proof once the right abstractions—<code>CompleteLattice</code>, <code>sInf</code>, <code>sSup</code>, and monotone maps—are in place. The machine-checked script enforces explicit handling of membership proofs (<code>simp [Set.mem_setOf_eq]</code>) and order reasoning. Each lemma corresponds closely to a line of the classical argument: bounding, showing invariance, and establishing minimality or maximality. The formal process highlights dependencies (such as monotonicity) and discourages implicit assumptions, yielding a robust and reusable library result.</p>
+<!-- Render check placeholder; replace or remove once validated. -->
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p>The bibliography entry below captures the original article alongside classical fixed point results for comparison.</p>
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-banach1922operations" class="csl-entry" role="listitem">
+Banach, Stefan. 1922. <span>“Sur Les Operations Dans Les Ensembles Abstraits Et Leur Application Aux Equations Integrales.”</span> <em>Fundamenta Mathematicae</em> 3: 133–81.
+</div>
+<div id="ref-brouwer1912abbildungssatz" class="csl-entry" role="listitem">
+Brouwer, Luitzen Egbertus Jan. 1912. <span>“<span>"U</span>ber Abbildung von Mannigfaltigkeiten.”</span> <em>Mathematische Annalen</em> 71 (1): 97–115.
+</div>
+<div id="ref-tarski1955lattice" class="csl-entry" role="listitem">
+Tarski, Alfred. 1955. <span>“A Lattice-Theoretical Fixpoint Theorem and Its Applications.”</span> <em>Pacific Journal of Mathematics</em> 5 (2): 285–309.
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

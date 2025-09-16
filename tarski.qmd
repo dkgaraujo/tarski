@@ -1,0 +1,168 @@
+---
+title: "Tarski's Fixed Point Theorem in Lean"
+author: "Codex"
+format:
+  html:
+    toc: true
+bibliography: ref.bib
+---
+
+```{=html}
+<style>
+pre code.language-lean {
+  font-size: 0.9em;
+}
+</style>
+```
+
+## Background and Statement
+
+The **Tarski fixed point theorem** asserts that any monotone self-map on a complete lattice possesses both a least and a greatest fixed point [@tarski1955lattice]. Formally, let $(L, \le)$ be a complete lattice and let $f : L \to L$ be monotone. Then there exist elements $\mu, \nu \in L$ such that
+\[
+ f(\mu) = \mu, \quad f(\nu) = \nu,
+\]
+where $\mu$ is minimal and $\nu$ is maximal among all fixed points of $f$.
+
+This result underlies large swathes of order theory, lattice-theoretic semantics of programming languages, and fixed point logics. In Lean, we work in the `CompleteLattice` typeclass and prove the theorem inside the module `Tarski`.
+
+## Intuition and Relationships to Other Fixed Point Theorems
+
+The guiding idea is that monotonicity preserves order, so it suffices to collect *pre-fixed points* (elements satisfying $f(x) \le x$) and *post-fixed points* (those with $x \le f(x)$). The infimum of the pre-fixed points gives the smallest element invariant under $f$, while the supremum of the post-fixed points gives the largest. The completeness of the lattice guarantees these bounds exist.
+
+In contrast, the Banach fixed point theorem demands a metric contraction and yields a unique fixed point [@banach1922operations]. Brouwer's fixed point theorem applies to continuous self-maps on compact, convex subsets of Euclidean space, again giving existence but not multiplicity information [@brouwer1912abbildungssatz]. Tarski's theorem is particularly powerful in discrete or order-theoretic contexts, such as reasoning about inductive and coinductive definitions, where metrics or convexity notions may be unavailable. However, when uniqueness or convergence guarantees are needed—for example in iterative numerical schemes—Banach's theorem gives stronger information.
+
+## Constructing Least and Greatest Fixed Points
+
+We begin by defining the least and greatest fixed points via infimum and supremum constructions in Lean. The following definitions mirror the classical order-theoretic ones.
+
+```lean
+/-- The least fixed point of a self-map `f`. -/
+def lfp (f : α → α) : α := sInf {x : α | f x ≤ x}
+
+/-- The greatest fixed point of a self-map `f`. -/
+def gfp (f : α → α) : α := sSup {x : α | x ≤ f x}
+```
+
+The set `{x : f x ≤ x}` collects pre-fixed points, whose infimum is the least candidate; `{x : x ≤ f x}` handles post-fixed points.
+
+### Bounding the Candidates
+
+For $x$ with $f(x) \le x$, we know $\mathrm{lfp}(f) \le x$ because $\mathrm{lfp}(f)$ is the infimum of all such points. Dually, a point $x$ with $x \le f(x)$ lies below $\mathrm{gfp}(f)$.
+
+```lean
+lemma lfp_le_of_mem {f : α → α} {x : α} (hx : f x ≤ x) : lfp f ≤ x := by
+  have hx' : x ∈ {x : α | f x ≤ x} := hx
+  simpa [lfp] using sInf_le hx'
+
+lemma le_of_mem_gfp {f : α → α} {x : α} (hx : x ≤ f x) : x ≤ gfp f := by
+  have hx' : x ∈ {x : α | x ≤ f x} := hx
+  simpa [gfp] using le_sSup hx'
+```
+
+These lemmas formalize the intuitive bounding relationships.
+
+### Monotonicity Forces Invariance
+
+To prove that $\mathrm{lfp}(f)$ is actually fixed, we first show $f(\mathrm{lfp}(f)) \le \mathrm{lfp}(f)$ using monotonicity applied to every pre-fixed point.
+
+```lean
+lemma lfp_le_flfp {f : α → α} (hf : Monotone f) : f (lfp f) ≤ lfp f := by
+  refine le_sInf ?_
+  intro x hx
+  have hx' : f x ≤ x := hx
+  have hμ_le : lfp f ≤ x := lfp_le_of_mem (f := f) hx
+  exact (hf hμ_le).trans hx'
+```
+
+Next, because $f(\mathrm{lfp}(f))$ is itself a pre-fixed point, it must lie above the infimum, giving the reverse inequality.
+
+```lean
+lemma lfp_le_f {f : α → α} (hf : Monotone f) : lfp f ≤ f (lfp f) := by
+  have hx : f (lfp f) ≤ lfp f := lfp_le_flfp (f := f) hf
+  have hx_mem : f (lfp f) ∈ {x : α | f x ≤ x} := by
+    show f (f (lfp f)) ≤ f (lfp f)
+    exact hf hx
+  simpa [lfp] using sInf_le hx_mem
+```
+
+Combining both directions yields equality.
+
+```lean
+lemma lfp_eq {f : α → α} (hf : Monotone f) : f (lfp f) = lfp f :=
+  le_antisymm (lfp_le_flfp (f := f) hf) (lfp_le_f (f := f) hf)
+```
+
+A symmetric pair of arguments establishes that $\mathrm{gfp}(f)$ is fixed.
+
+```lean
+lemma gfp_le {f : α → α} (hf : Monotone f) : gfp f ≤ f (gfp f) := by
+  refine sSup_le ?_
+  intro x hx
+  have hx' : x ≤ f x := hx
+  have hx_le : x ≤ gfp f := le_of_mem_gfp (f := f) hx
+  have : f x ≤ f (gfp f) := hf hx_le
+  exact hx'.trans this
+
+lemma fgfp_le {f : α → α} (hf : Monotone f) : f (gfp f) ≤ gfp f := by
+  have hx : f (gfp f) ∈ {x : α | x ≤ f x} := by
+    show f (gfp f) ≤ f (f (gfp f))
+    exact hf (gfp_le (f := f) hf)
+  simpa [gfp] using le_sSup hx
+
+lemma gfp_eq {f : α → α} (hf : Monotone f) : f (gfp f) = gfp f :=
+  le_antisymm (fgfp_le (f := f) hf) (gfp_le (f := f) hf)
+```
+
+### Minimality and Maximality Among Fixed Points
+
+With fixed points in hand, we verify their extremal properties. Any fixed point automatically belongs to the relevant set, so the earlier bounds apply.
+
+```lean
+lemma lfp_isLeast {f : α → α} (hf : Monotone f) :
+    IsLeast {x : α | f x = x} (lfp f) := by
+  refine ⟨?_, ?_⟩
+  · exact lfp_eq (f := f) hf
+  · intro x hx
+    have hx' := hx
+    simp [Set.mem_setOf_eq] at hx'
+    have hx_mem : f x ≤ x := by
+      calc
+        f x = x := hx'
+        _ ≤ x := le_rfl
+    exact lfp_le_of_mem (f := f) hx_mem
+
+lemma gfp_isGreatest {f : α → α} (hf : Monotone f) :
+    IsGreatest {x : α | f x = x} (gfp f) := by
+  refine ⟨?_, ?_⟩
+  · exact gfp_eq (f := f) hf
+  · intro x hx
+    have hx' := hx
+    simp [Set.mem_setOf_eq] at hx'
+    have hx_mem : x ≤ f x := by
+      calc
+        x = f x := hx'.symm
+        _ ≤ f x := le_rfl
+    exact le_of_mem_gfp (f := f) hx_mem
+```
+
+### The Final Theorem
+
+Collecting both extremal statements yields Lean's statement of Tarski's theorem.
+
+```lean
+lemma tarski {f : α → α} (hf : Monotone f) :
+    ∃ μ ν, IsLeast {x : α | f x = x} μ ∧ IsGreatest {x : α | f x = x} ν := by
+  refine ⟨lfp f, gfp f, lfp_isLeast (f := f) hf, gfp_isGreatest (f := f) hf⟩
+```
+
+## Reflections on Formalizing the Proof
+
+Lean's typeclass and order hierarchy make it straightforward to translate the textbook proof once the right abstractions—`CompleteLattice`, `sInf`, `sSup`, and monotone maps—are in place. The machine-checked script enforces explicit handling of membership proofs (`simp [Set.mem_setOf_eq]`) and order reasoning. Each lemma corresponds closely to a line of the classical argument: bounding, showing invariance, and establishing minimality or maximality. The formal process highlights dependencies (such as monotonicity) and discourages implicit assumptions, yielding a robust and reusable library result.
+
+```{=html}
+<!-- Render check placeholder; replace or remove once validated. -->
+```
+
+## References
+
+The bibliography entry below captures the original article alongside classical fixed point results for comparison.
