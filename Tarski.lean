@@ -17,14 +17,17 @@ def lfp (f : α → α) : α := sInf {x : α | f x ≤ x}
 /-- The greatest fixed point of a self-map `f`. -/
 def gfp (f : α → α) : α := sSup {x : α | x ≤ f x}
 
+-- A post-fixed point bounds the least fixed point from above.
 lemma lfp_le_of_mem {f : α → α} {x : α} (hx : f x ≤ x) : lfp f ≤ x := by
   have hx' : x ∈ {x : α | f x ≤ x} := hx
   simpa [lfp] using sInf_le hx'
 
+-- Any pre-fixed point lies below the greatest fixed point.
 lemma le_of_mem_gfp {f : α → α} {x : α} (hx : x ≤ f x) : x ≤ gfp f := by
   have hx' : x ∈ {x : α | x ≤ f x} := hx
   simpa [gfp] using le_sSup hx'
 
+-- Monotonicity forces `f` to send its least pre-fixed point below itself.
 lemma lfp_le_flfp {f : α → α} (hf : Monotone f) : f (lfp f) ≤ lfp f := by
   refine le_sInf ?_
   intro x hx
@@ -32,6 +35,7 @@ lemma lfp_le_flfp {f : α → α} (hf : Monotone f) : f (lfp f) ≤ lfp f := by
   have hμ_le : lfp f ≤ x := lfp_le_of_mem (f := f) hx
   exact (hf hμ_le).trans hx'
 
+-- The previous inequality ensures the least pre-fixed point also pre-fixes `f`.
 lemma lfp_le_f {f : α → α} (hf : Monotone f) : lfp f ≤ f (lfp f) := by
   have hx : f (lfp f) ≤ lfp f := lfp_le_flfp (f := f) hf
   have hx_mem : f (lfp f) ∈ {x : α | f x ≤ x} := by
@@ -39,9 +43,11 @@ lemma lfp_le_f {f : α → α} (hf : Monotone f) : lfp f ≤ f (lfp f) := by
     exact hf hx
   simpa [lfp] using sInf_le hx_mem
 
+-- Combining both inequalities shows `lfp f` is a fixed point.
 lemma lfp_eq {f : α → α} (hf : Monotone f) : f (lfp f) = lfp f :=
   le_antisymm (lfp_le_flfp (f := f) hf) (lfp_le_f (f := f) hf)
 
+-- By monotonicity every pre-fixed point of `f` pushes the greatest one upward.
 lemma gfp_le {f : α → α} (hf : Monotone f) : gfp f ≤ f (gfp f) := by
   refine sSup_le ?_
   intro x hx
@@ -50,15 +56,18 @@ lemma gfp_le {f : α → α} (hf : Monotone f) : gfp f ≤ f (gfp f) := by
   have : f x ≤ f (gfp f) := hf hx_le
   exact hx'.trans this
 
+-- Applying the previous inequality to `f (gfp f)` shows it remains pre-fixed.
 lemma fgfp_le {f : α → α} (hf : Monotone f) : f (gfp f) ≤ gfp f := by
   have hx : f (gfp f) ∈ {x : α | x ≤ f x} := by
     show f (gfp f) ≤ f (f (gfp f))
     exact hf (gfp_le (f := f) hf)
   simpa [gfp] using le_sSup hx
 
+-- The greatest fixed point is therefore an actual fixed point of `f`.
 lemma gfp_eq {f : α → α} (hf : Monotone f) : f (gfp f) = gfp f :=
   le_antisymm (fgfp_le (f := f) hf) (gfp_le (f := f) hf)
 
+-- `lfp f` is the smallest element among all fixed points of `f`.
 lemma lfp_isLeast {f : α → α} (hf : Monotone f) :
     IsLeast {x : α | f x = x} (lfp f) := by
   refine ⟨?_, ?_⟩
@@ -72,6 +81,7 @@ lemma lfp_isLeast {f : α → α} (hf : Monotone f) :
         _ ≤ x := le_rfl
     exact lfp_le_of_mem (f := f) hx_mem
 
+-- Symmetrically, `gfp f` is the largest fixed point of `f`.
 lemma gfp_isGreatest {f : α → α} (hf : Monotone f) :
     IsGreatest {x : α | f x = x} (gfp f) := by
   refine ⟨?_, ?_⟩
@@ -87,6 +97,7 @@ lemma gfp_isGreatest {f : α → α} (hf : Monotone f) :
 
 /-- Tarski's fixed point theorem: a monotone self-map on a complete lattice has
 least and greatest fixed points. -/
+-- Tarski's fixed point theorem packages the previous facts.
 lemma tarski {f : α → α} (hf : Monotone f) :
     ∃ μ ν, IsLeast {x : α | f x = x} μ ∧ IsGreatest {x : α | f x = x} ν := by
   refine ⟨lfp f, gfp f, lfp_isLeast (f := f) hf, gfp_isGreatest (f := f) hf⟩
